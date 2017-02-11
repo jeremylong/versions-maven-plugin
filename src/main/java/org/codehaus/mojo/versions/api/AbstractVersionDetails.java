@@ -153,9 +153,11 @@ public abstract class AbstractVersionDetails
         ArtifactVersion lowerBound = version;
         ArtifactVersion upperBound = null;
 
+        System.out.println( "getNewVersions() upperBoundFixedSegement:" + upperBoundFixedSegment );
         if ( upperBoundFixedSegment != -1 )
         {
             upperBound = getVersionComparator().incrementSegment( lowerBound, upperBoundFixedSegment );
+            System.out.println( "upperBound:" + upperBound.toString() );
         }
 
         return getVersions( version, upperBound, includeSnapshots, false, false );
@@ -329,14 +331,21 @@ public abstract class AbstractVersionDetails
         Set<ArtifactVersion> result;
         final VersionComparator versionComparator = getVersionComparator();
         result = new TreeSet<ArtifactVersion>( versionComparator );
+        for ( ArtifactVersion artifactVersion : result )
+        {
+            System.out.println( "Tree: " + artifactVersion.toString() );
+        }
         for ( ArtifactVersion candidate : Arrays.asList( getVersions( includeSnapshots ) ) )
         {
+            System.out.println( "candidate: " + candidate.toString() );
             if ( versionRange != null && !ArtifactVersions.isVersionInRange( candidate, versionRange ) )
             {
                 continue;
             }
             int lower = lowerBound == null ? -1 : versionComparator.compare( lowerBound, candidate );
             int upper = upperBound == null ? +1 : versionComparator.compare( upperBound, candidate );
+            
+            System.out.println( "  lower: " + lower + " upper: " + upper );
             if ( lower > 0 || upper < 0 )
             {
                 continue;
@@ -349,6 +358,7 @@ public abstract class AbstractVersionDetails
             {
                 continue;
             }
+            System.out.println( "Add candidate: " + candidate.toString() );
             result.add( candidate );
         }
         return result.toArray( new ArtifactVersion[result.size()] );
