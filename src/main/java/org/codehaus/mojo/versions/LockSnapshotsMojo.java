@@ -31,6 +31,8 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.project.MavenProject;
+import org.apache.maven.shared.artifact.resolve.ArtifactResult;
+import org.apache.maven.shared.dependencies.DefaultDependableCoordinate;
 import org.codehaus.mojo.versions.api.PomHelper;
 import org.codehaus.mojo.versions.rewriting.ModifiedPomXMLEventReader;
 
@@ -43,7 +45,7 @@ import org.codehaus.mojo.versions.rewriting.ModifiedPomXMLEventReader;
  * @author Paul Gier
  * @since 1.0-alpha-3
  */
-@Mojo(name= "lock-snapshots", requiresProject = true, requiresDirectInvocation = true)
+@Mojo( name = "lock-snapshots", requiresProject = true, requiresDirectInvocation = true )
 public class LockSnapshotsMojo
     extends AbstractVersionsDependencyUpdaterMojo
 {
@@ -84,7 +86,7 @@ public class LockSnapshotsMojo
     private void lockSnapshots( ModifiedPomXMLEventReader pom, Collection<Dependency> dependencies )
         throws XMLStreamException, MojoExecutionException
     {
-        for (Dependency dep : dependencies)
+        for ( Dependency dep : dependencies )
         {
             if ( isExcludeReactor() && isProducedByReactor( dep ) )
             {
@@ -123,7 +125,7 @@ public class LockSnapshotsMojo
             return;
         }
 
-        if ( reactorProjects.contains( parent ) )
+        if ( session.getProjectDependencyGraph().getSortedProjects().contains( parent ) )
         {
             getLog().info( "Project's parent is part of the reactor" );
             return;
@@ -161,9 +163,10 @@ public class LockSnapshotsMojo
 
         try
         {
-            resolver.resolve( artifact, getProject().getRemoteArtifactRepositories(), localRepository );
+            ArtifactResult resolveArtifact = resolver.resolveArtifact( session.getProjectBuildingRequest(), artifact );
+            // resolver.resolve( artifact, getProject().getRemoteArtifactRepositories(), localRepository );
 
-            lockedVersion = artifact.getVersion();
+            lockedVersion = resolveArtifact.getArtifact().getVersion();
         }
         catch ( Exception e )
         {
@@ -184,13 +187,25 @@ public class LockSnapshotsMojo
 
         String lockedVersion = dep.getVersion();
 
-        Artifact depArtifact = artifactFactory.createArtifact( dep.getGroupId(), dep.getArtifactId(), dep.getVersion(),
-                                                               dep.getScope(), dep.getType() );
+        // Artifact depArtifact = artifactFactory.createArtifact( dep.getGroupId(), dep.getArtifactId(),
+        // dep.getVersion(),
+        // dep.getScope(), dep.getType() );
         try
         {
-            resolver.resolve( depArtifact, getProject().getRemoteArtifactRepositories(), localRepository );
+            DefaultDependableCoordinate coordinate = new DefaultDependableCoordinate();
+            coordinate.setGroupId( dep.getGroupId() );
+            coordinate.setArtifactId( dep.getArtifactId() );
+            coordinate.setVersion( dep.getVersion() );
+            coordinate.setType( dep.getType() );
 
-            lockedVersion = depArtifact.getVersion();
+            Iterable<ArtifactResult> resolveDependencies =
+                dependencyResolver.resolveDependencies( session.getProjectBuildingRequest(), coordinate, null );
+
+            resolveDependencies.iterator().next().getArtifact().getVersion();
+            // resolver.resolve( depArtifact, getProject().getRemoteArtifactRepositories(), localRepository );
+
+            // lockedVersion = depArtifact.getVersion();
+            lockedVersion = resolveDependencies.iterator().next().getArtifact().getVersion();
         }
         catch ( Exception e )
         {

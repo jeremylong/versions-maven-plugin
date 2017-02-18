@@ -19,6 +19,28 @@ package org.codehaus.mojo.versions.api;
  * under the License.
  */
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.regex.Pattern;
+
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.artifact.factory.ArtifactFactory;
@@ -28,7 +50,6 @@ import org.apache.maven.artifact.metadata.ArtifactMetadataSource;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.resolver.ArtifactNotFoundException;
 import org.apache.maven.artifact.resolver.ArtifactResolutionException;
-import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
@@ -41,6 +62,8 @@ import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.path.PathTranslator;
 import org.apache.maven.settings.Settings;
+import org.apache.maven.shared.artifact.resolve.ArtifactResolver;
+import org.apache.maven.shared.artifact.resolve.ArtifactResolverException;
 import org.apache.maven.wagon.ConnectionException;
 import org.apache.maven.wagon.ResourceDoesNotExistException;
 import org.apache.maven.wagon.TransferFailedException;
@@ -65,28 +88,6 @@ import org.codehaus.plexus.component.configurator.expression.ExpressionEvaluatio
 import org.codehaus.plexus.component.configurator.expression.ExpressionEvaluator;
 import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
-
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.regex.Pattern;
 
 /**
  * Helper class that provides common functionality required by both the mojos and the reports.
@@ -169,7 +170,9 @@ public class DefaultVersionsHelper
     /**
      * The artifact resolver.
      *
+     * Note: With version 3.0.0 upgraded to maven-artifact-transfer shared.
      * @since 1.3
+     * 
      */
     private final ArtifactResolver artifactResolver;
 
@@ -385,7 +388,7 @@ public class DefaultVersionsHelper
     public ArtifactVersions lookupArtifactVersions( Artifact artifact, boolean usePluginRepositories )
         throws ArtifactMetadataRetrievalException
     {
-        List remoteRepositories = usePluginRepositories ? remotePluginRepositories : remoteArtifactRepositories;
+        List<ArtifactRepository> remoteRepositories = usePluginRepositories ? remotePluginRepositories : remoteArtifactRepositories;
         final List<ArtifactVersion> versions =
             artifactMetadataSource.retrieveAvailableVersions( artifact, localRepository, remoteRepositories );
         final List<IgnoreVersion> ignoredVersions = getIgnoredVersions( artifact );
@@ -505,10 +508,12 @@ public class DefaultVersionsHelper
     }
 
     public void resolveArtifact( Artifact artifact, boolean usePluginRepositories )
-        throws ArtifactResolutionException, ArtifactNotFoundException
+        throws ArtifactResolverException
     {
         List remoteRepositories = usePluginRepositories ? remotePluginRepositories : remoteArtifactRepositories;
-        artifactResolver.resolve( artifact, remoteRepositories, localRepository );
+        
+        artifactResolver.resolveArtifact( mavenSession.getProjectBuildingRequest(), artifact );
+//        artifactResolver.resolve( artifact, remoteRepositories, localRepository );
     }
 
     /**
@@ -703,12 +708,12 @@ public class DefaultVersionsHelper
         catch ( final ExecutionException ee )
         {
             throw new ArtifactMetadataRetrievalException( "Unable to acquire metadata for dependencies " + dependencies
-                + ": " + ee.getMessage(), ee );
+                + ": " + ee.getMessage(), ee, null );
         }
         catch ( final InterruptedException ie )
         {
             throw new ArtifactMetadataRetrievalException( "Unable to acquire metadata for dependencies " + dependencies
-                + ": " + ie.getMessage(), ie );
+                + ": " + ie.getMessage(), ie, null );
         }
         finally
         {
@@ -768,12 +773,12 @@ public class DefaultVersionsHelper
         catch ( final ExecutionException ee )
         {
             throw new ArtifactMetadataRetrievalException( "Unable to acquire metadata for plugins " + plugins + ": "
-                + ee.getMessage(), ee );
+                + ee.getMessage(), ee, null );
         }
         catch ( final InterruptedException ie )
         {
             throw new ArtifactMetadataRetrievalException( "Unable to acquire metadata for plugins " + plugins + ": "
-                + ie.getMessage(), ie );
+                + ie.getMessage(), ie, null );
         }
         finally
         {

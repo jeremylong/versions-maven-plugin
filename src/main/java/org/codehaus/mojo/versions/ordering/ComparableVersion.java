@@ -30,6 +30,8 @@ import java.util.Properties;
 import java.util.Stack;
 
 /**
+ * THIS IS DUPLICATED CODE from MAVEN CORE!!!
+ * 
  * Generic implementation of version comparison.
  *
  * @author <a href="mailto:kenney@apache.org">Kenney Westerhof</a>

@@ -24,7 +24,6 @@ import org.apache.maven.artifact.metadata.ArtifactMetadataRetrievalException;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.DependencyManagement;
-import org.apache.maven.model.Model;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -33,10 +32,10 @@ import org.codehaus.mojo.versions.api.ArtifactVersions;
 import org.codehaus.mojo.versions.api.PomHelper;
 import org.codehaus.mojo.versions.rewriting.ModifiedPomXMLEventReader;
 
-import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Iterator;
+
+import javax.xml.stream.XMLStreamException;
 
 /**
  * Replaces any version with the latest version.
@@ -44,7 +43,7 @@ import java.util.Iterator;
  * @author Stephen Connolly
  * @since 1.0-alpha-3
  */
-@Mojo(name = "use-latest-versions", requiresProject = true, requiresDirectInvocation = true)
+@Mojo( name = "use-latest-versions", requiresProject = true, requiresDirectInvocation = true )
 public class UseLatestVersionsMojo
     extends AbstractVersionsDependencyUpdaterMojo
 {
@@ -53,7 +52,7 @@ public class UseLatestVersionsMojo
      *
      * @since 1.2
      */
-    @Parameter(property = "allowMajorUpdates", defaultValue = "true")
+    @Parameter( property = "allowMajorUpdates", defaultValue = "true" )
     protected Boolean allowMajorUpdates;
 
     /**
@@ -61,7 +60,7 @@ public class UseLatestVersionsMojo
      *
      * @since 1.2
      */
-    @Parameter(property = "allowMinorUpdates", defaultValue = "true")
+    @Parameter( property = "allowMinorUpdates", defaultValue = "true" )
     protected Boolean allowMinorUpdates;
 
     /**
@@ -69,7 +68,7 @@ public class UseLatestVersionsMojo
      *
      * @since 1.2
      */
-    @Parameter(property = "allowIncrementalUpdates", defaultValue = "true")
+    @Parameter( property = "allowIncrementalUpdates", defaultValue = "true" )
     protected Boolean allowIncrementalUpdates;
 
     // ------------------------------ METHODS --------------------------
@@ -88,7 +87,8 @@ public class UseLatestVersionsMojo
         {
             if ( getProject().getDependencyManagement() != null && isProcessingDependencyManagement() )
             {
-                DependencyManagement dependencyManagement = PomHelper.getRawModel( getProject() ).getDependencyManagement();
+                DependencyManagement dependencyManagement =
+                    PomHelper.getRawModel( getProject() ).getDependencyManagement();
                 if ( dependencyManagement != null )
                 {
                     useLatestVersions( pom, dependencyManagement.getDependencies() );
@@ -103,21 +103,19 @@ public class UseLatestVersionsMojo
         {
             throw new MojoExecutionException( e.getMessage(), e );
         }
-        catch ( IOException e ) {
+        catch ( IOException e )
+        {
             throw new MojoExecutionException( e.getMessage(), e );
         }
     }
 
-    private void useLatestVersions( ModifiedPomXMLEventReader pom, Collection dependencies )
+    private void useLatestVersions( ModifiedPomXMLEventReader pom, Collection<Dependency> dependencies )
         throws XMLStreamException, MojoExecutionException, ArtifactMetadataRetrievalException
     {
         int segment = determineUnchangedSegment( allowMajorUpdates, allowMinorUpdates, allowIncrementalUpdates );
-        Iterator i = dependencies.iterator();
 
-        while ( i.hasNext() )
+        for ( Dependency dep : dependencies )
         {
-            Dependency dep = (Dependency) i.next();
-
             if ( isExcludeReactor() && isProducedByReactor( dep ) )
             {
                 getLog().info( "Ignoring reactor dependency: " + toString( dep ) );
